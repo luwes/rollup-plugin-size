@@ -1,0 +1,24 @@
+{
+  "name": "rollup-plugin-size",
+  "version": "0.0.1",
+  "description": "Track compressed Rollup asset sizes over time.",
+  "main": "rollup-plugin-size.js",
+  "scripts": {
+    "test": "eslint"
+  },
+  "repository": "luwes/rollup-plugin-size",
+  "author": "Wesley Luyten <me@wesleyluyten.com> (https://wesleyluyten.com)",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "brotli-size": "^0.0.3",
+    "chalk": "^2.4.2",
+    "glob": "^7.1.3",
+    "gzip-size": "^5.0.0",
+    "minimatch": "^3.0.4",
+    "pretty-bytes": "^5.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.14.0",
+    "prettier": "^1.16.4"
+  }
+}
