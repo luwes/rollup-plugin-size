@@ -13,6 +13,7 @@
   <img src="https://i.imgur.com/SE1mlK2.png" width="602" alt="rollup-plugin-size">
 </p>
 
+> 🙋 Using Webpack? Check out the original [size-plugin](https://github.com/GoogleChromeLabs/size-plugin).
 
 ## Installation
 
@@ -42,3 +43,7 @@ plugins: [
 ## License
 
 [Apache 2.0](LICENSE)
+
+## Credits
+
+This is a port of [size-plugin](https://github.com/GoogleChromeLabs/size-plugin) by [Jason Miller](https://github.com/developit).
