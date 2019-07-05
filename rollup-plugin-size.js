@@ -14,90 +14,130 @@
  * the License.
  */
 
-const path = require('path');
-const chalk = require('chalk');
-const { promisify } = require('util');
-const globPromise = require('glob');
-const minimatch = require('minimatch');
-const gzipSize = require('gzip-size');
+const path = require("path");
+const chalk = require("chalk");
+const { promisify } = require("util");
+const globPromise = require("glob");
+const minimatch = require("minimatch");
+const gzipSize = require("gzip-size");
+const fs = require("fs");
 // const brotliSize = require('brotli-size');
-const prettyBytes = require('pretty-bytes');
-const { toMap, dedupe } = require('./utils.js');
+const prettyBytes = require("pretty-bytes");
+const { toMap, dedupe, toFileMap } = require("./utils.js");
 
 const glob = promisify(globPromise);
+const writeFile = promisify(fs.writeFile);
+const readFile = promisify(fs.readFile);
+const BOT = process.env.SIZE_PLUGIN_BOT;
+const DIFF_FILE = "size-plugin-diff.json";
 
 const defaults = {
   // gzip: true,
   // brotli: false,
-  pattern: '**/*.{mjs,js,css,html}',
+  pattern: "**/*.{mjs,js,jsx,css,html}",
   exclude: undefined,
   columnWidth: 20
 };
 
-function bundleSize(options) {
-  const { pattern, exclude, columnWidth } = Object.assign(defaults, options);
-
-  let max = '';
-  let firstTime = true;
+function bundleSize(_options) {
+  const options = Object.assign(defaults, _options);
+  const { pattern, exclude } = options;
+  options.filename = options.filename || "size-plugin.json";
+  const filename = path.join(process.cwd(), options.filename);
   let initialSizes;
 
-  function buildStart() {
-    max = '';
-  }
-
-  function renderChunk(code) {
-    max = max += code;
-    return null;
-  }
-
   async function generateBundle(outputOptions, bundle) {
-    if (firstTime) {
-      firstTime = false;
-      initialSizes = await getSizes(path.dirname(outputOptions.file));
-    }
+    initialSizes = await load(path.resolve(outputOptions.dir));
     outputSizes(bundle).catch(console.error);
   }
-
-  async function outputSizes(assets) {
-    // map of filenames to their previous size
-    const sizesBefore = await Promise.resolve(initialSizes);
+  function filterFiles(files) {
     const isMatched = minimatch.filter(pattern);
     const isExcluded = exclude ? minimatch.filter(exclude) : () => false;
-    const assetNames = Object.keys(assets).filter(
-      file => isMatched(file) && !isExcluded(file)
-    );
+    return files.filter(file => isMatched(file) && !isExcluded(file));
+  }
+  async function readFromDisk(filepath) {
+    try {
+      const oldStatsStr = (await readFile(filepath)).toString();
+      const oldStats = JSON.parse(oldStatsStr);
+      return oldStats.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (err) {
+      return [];
+    }
+  }
+  async function writeToDisk(filename, stats) {
+    if (
+      process.env.NODE_ENV === "production" &&
+      !options.load &&
+      stats.files.some(file => file.diff > 0)
+    ) {
+      const data = await readFromDisk(filename);
+      data.unshift(stats);
+      await writeFile(filename, JSON.stringify(data, undefined, 2));
+    }
+  }
+  async function save(files) {
+    const stats = {
+      timestamp: Date.now(),
+      files: files.map(file => ({
+        filename: file.name,
+        previous: file.sizeBefore,
+        size: file.size,
+        diff: file.size - file.sizeBefore
+      }))
+    };
+    BOT && (await writeFile(DIFF_FILE, JSON.stringify(stats, undefined, 2)));
+    options.save && (await options.save(stats));
+    await writeToDisk(filename, stats);
+  }
+  async function load(outputPath) {
+    if (options.load) {
+      const { files } = await options.load();
+      return toFileMap(files);
+    }
+    const data = await readFromDisk(filename);
+    if (data.length) {
+      const [{ files }] = data;
+      return toFileMap(files);
+    }
+    return getSizes(outputPath);
+  }
+  async function outputSizes(assets) {
+    const sizesBefore = await Promise.resolve(initialSizes);
+    const assetNames = filterFiles(Object.keys(assets));
     const sizes = await Promise.all(
       assetNames.map(name => gzipSize(assets[name].code))
     );
 
     // map of de-hashed filenames to their final size
-    initialSizes = toMap(assetNames, sizes);
+    const sizesAfter = toMap(assetNames, sizes);
 
     // get a list of unique filenames
-    const files = Object.keys(initialSizes).filter(dedupe);
+    const files = [
+      ...Object.keys(sizesBefore),
+      ...Object.keys(sizesAfter)
+    ].filter(dedupe);
 
     const width = Math.max(...files.map(file => file.length));
-    let output = '';
+    let output = "";
+    const items = [];
+
     for (const name of files) {
-      const size = initialSizes[name] || 0;
-      const delta = size - (sizesBefore[name] || 0);
-      const msg =
-        new Array(
-          (width !== name.length ? width : columnWidth) - name.length + 2
-        ).join(' ') +
-        name +
-        ' ⏤  ';
+      const size = sizesAfter[name] || 0;
+      const sizeBefore = sizesBefore[name] || 0;
+      const delta = size - sizeBefore;
+      const msg = new Array(width - name.length + 2).join(" ") + name + " ⏤  ";
       const color =
         size > 100 * 1024
-          ? 'red'
+          ? "red"
           : size > 40 * 1024
-          ? 'yellow'
+          ? "yellow"
           : size > 20 * 1024
-          ? 'cyan'
-          : 'green';
+          ? "cyan"
+          : "green";
       let sizeText = chalk[color](prettyBytes(size));
-      if (delta) {
-        let deltaText = (delta > 0 ? '+' : '') + prettyBytes(delta);
+      let deltaText = "";
+      if (delta && Math.abs(delta) > 1) {
+        deltaText = (delta > 0 ? "+" : "") + prettyBytes(delta);
         if (delta > 1024) {
           sizeText = chalk.bold(sizeText);
           deltaText = chalk.red(deltaText);
@@ -106,27 +146,40 @@ function bundleSize(options) {
         }
         sizeText += ` (${deltaText})`;
       }
-      output += msg + sizeText;
+      const text = msg + sizeText + "\n";
+      const item = {
+        name,
+        sizeBefore,
+        size,
+        sizeText,
+        delta,
+        deltaText,
+        msg,
+        color
+      };
+      items.push(item);
+
+      output += text;
     }
-    if (output) {
-      console.log(output);
-    }
+
+    await save(items);
+    output && console.log("\n" + output);
   }
 
   async function getSizes(cwd) {
     const files = await glob(pattern, { cwd, ignore: exclude });
 
     const sizes = await Promise.all(
-      files.map(file => gzipSize.file(path.join(cwd, file)).catch(() => null))
+      filterFiles(files).map(file =>
+        gzipSize.file(path.join(cwd, file)).catch(() => null)
+      )
     );
 
     return toMap(files, sizes);
   }
 
   return {
-    name: 'rollup-plugin-size',
-    buildStart,
-    renderChunk,
+    name: "rollup-plugin-size",
     generateBundle
   };
 }
