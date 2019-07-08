@@ -24,12 +24,11 @@ const fs = require("fs");
 // const brotliSize = require('brotli-size');
 const prettyBytes = require("pretty-bytes");
 const { toMap, dedupe, toFileMap } = require("./utils.js");
+const { publishDiff, publishSizes } = require("./publish-size");
 
 const glob = promisify(globPromise);
 const writeFile = promisify(fs.writeFile);
 const readFile = promisify(fs.readFile);
-const BOT = process.env.SIZE_PLUGIN_BOT;
-const DIFF_FILE = "size-plugin-diff.json";
 
 const defaults = {
   // gzip: true,
@@ -73,6 +72,7 @@ function bundleSize(_options) {
       const data = await readFromDisk(filename);
       data.unshift(stats);
       await writeFile(filename, JSON.stringify(data, undefined, 2));
+      await publishSizes(data);
     }
   }
   async function save(files) {
@@ -85,7 +85,7 @@ function bundleSize(_options) {
         diff: file.size - file.sizeBefore
       }))
     };
-    BOT && (await writeFile(DIFF_FILE, JSON.stringify(stats, undefined, 2)));
+    await publishDiff(stats);
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
