@@ -20,15 +20,14 @@ const { promisify } = require("util");
 const globPromise = require("glob");
 const minimatch = require("minimatch");
 const gzipSize = require("gzip-size");
-const fs = require("fs");
+const fs = require('fs-extra');
 // const brotliSize = require('brotli-size');
 const prettyBytes = require("pretty-bytes");
 const { toMap, dedupe, toFileMap } = require("./utils.js");
 const { publishDiff, publishSizes } = require("./publish-size");
 
 const glob = promisify(globPromise);
-const writeFile = promisify(fs.writeFile);
-const readFile = promisify(fs.readFile);
+
 
 const defaults = {
   // gzip: true,
@@ -54,10 +53,10 @@ function bundleSize(_options) {
     const isExcluded = exclude ? minimatch.filter(exclude) : () => false;
     return files.filter(file => isMatched(file) && !isExcluded(file));
   }
-  async function readFromDisk(filepath) {
+  async function readFromDisk(filename) {
     try {
-      const oldStatsStr = (await readFile(filepath)).toString();
-      const oldStats = JSON.parse(oldStatsStr);
+      await fs.ensureFile(filename);
+			const oldStats = await fs.readJSON(filename);
       return oldStats.sort((a, b) => b.timestamp - a.timestamp);
     } catch (err) {
       return [];
@@ -67,12 +66,13 @@ function bundleSize(_options) {
     if (
       process.env.NODE_ENV === "production" &&
       !options.load &&
-      stats.files.some(file => file.diff > 0)
+      stats.files.some(file => file.diff!==0)
     ) {
       const data = await readFromDisk(filename);
       data.unshift(stats);
-      await writeFile(filename, JSON.stringify(data, undefined, 2));
-      await publishSizes(data);
+			await fs.ensureFile(filename);
+			await fs.writeJSON(filename, data);
+			await publishSizes(data,this.options.filename);
     }
   }
   async function save(files) {
