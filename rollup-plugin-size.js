@@ -20,26 +20,39 @@ const { promisify } = require('util');
 const globPromise = require('glob');
 const minimatch = require('minimatch');
 const gzipSize = require('gzip-size');
-// const brotliSize = require('brotli-size');
+const brotliSize = require('brotli-size');
 const prettyBytes = require('pretty-bytes');
 const { toMap, dedupe } = require('./utils.js');
-
 const glob = promisify(globPromise);
 
+brotliSize.file = (path, options) => {
+  return new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(path);
+    stream.on('error', reject);
+
+    const brotliStream = stream.pipe(brotliSize.stream(options));
+    brotliStream.on('error', reject);
+    brotliStream.on('brotli-size', resolve);
+  });
+};
+
+
 const defaults = {
-  // gzip: true,
-  // brotli: false,
+  gzip: true,
+  brotli: false,
   pattern: '**/*.{mjs,js,css,html}',
   exclude: undefined,
   columnWidth: 20
 };
 
 function bundleSize(options) {
-  const { pattern, exclude, columnWidth } = Object.assign(defaults, options);
+  const { pattern, exclude, columnWidth, brotli } = Object.assign(defaults, options);
 
   let max = '';
   let firstTime = true;
   let initialSizes;
+
+  const compressionSize = brotli ? brotliSize : gzipSize;
 
   function buildStart() {
     max = '';
@@ -67,7 +80,7 @@ function bundleSize(options) {
       file => isMatched(file) && !isExcluded(file)
     );
     const sizes = await Promise.all(
-      assetNames.map(name => gzipSize(assets[name].code))
+      assetNames.map(name => compressionSize(assets[name].code))
     );
 
     // map of de-hashed filenames to their final size
@@ -117,7 +130,7 @@ function bundleSize(options) {
     const files = await glob(pattern, { cwd, ignore: exclude });
 
     const sizes = await Promise.all(
-      files.map(file => gzipSize.file(path.join(cwd, file)).catch(() => null))
+      files.map(file => compressionSize.file(path.join(cwd, file)).catch(() => null))
     );
 
     return toMap(files, sizes);
