@@ -14,35 +14,46 @@
  * the License.
  */
 
-const path = require("path");
-const chalk = require("chalk");
-const { promisify } = require("util");
-const globPromise = require("glob");
-const minimatch = require("minimatch");
-const gzipSize = require("gzip-size");
+const path = require('path');
+const chalk = require('chalk');
+const { promisify } = require('util');
+const globPromise = require('glob');
+const minimatch = require('minimatch');
+const gzipSize = require('gzip-size');
+const brotliSize = require('brotli-size');
+const prettyBytes = require('pretty-bytes');
 const fs = require('fs-extra');
-// const brotliSize = require('brotli-size');
-const prettyBytes = require("pretty-bytes");
-const { toMap, dedupe, toFileMap } = require("./utils.js");
-const { publishDiff, publishSizes } = require("./publish-size");
-
+const { toMap, dedupe, toFileMap } = require('./utils.js');
+const { publishSizes, publishDiff } = require('./publish-size');
 const glob = promisify(globPromise);
 
+brotliSize.file = (path, options) => {
+  return new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(path);
+    stream.on('error', reject);
+
+    const brotliStream = stream.pipe(brotliSize.stream(options));
+    brotliStream.on('error', reject);
+    brotliStream.on('brotli-size', resolve);
+  });
+};
 
 const defaults = {
-  // gzip: true,
-  // brotli: false,
-  pattern: "**/*.{mjs,js,jsx,css,html}",
+  gzip: true,
+  brotli: false,
+  pattern: '**/*.{mjs,js,jsx,css,html}',
   exclude: undefined,
   columnWidth: 20
 };
 
 function bundleSize(_options) {
   const options = Object.assign(defaults, _options);
-  const { pattern, exclude } = options;
-  options.filename = options.filename || "size-plugin.json";
+  const { pattern, exclude, brotli } = options;
+  options.filename = options.filename || 'size-plugin.json';
   const filename = path.join(process.cwd(), options.filename);
   let initialSizes;
+
+  const compressionSize = brotli ? brotliSize : gzipSize;
 
   async function generateBundle(outputOptions, bundle) {
     initialSizes = await load(path.resolve(outputOptions.dir));
@@ -56,7 +67,7 @@ function bundleSize(_options) {
   async function readFromDisk(filename) {
     try {
       await fs.ensureFile(filename);
-			const oldStats = await fs.readJSON(filename);
+      const oldStats = await fs.readJSON(filename);
       return oldStats.sort((a, b) => b.timestamp - a.timestamp);
     } catch (err) {
       return [];
@@ -64,15 +75,15 @@ function bundleSize(_options) {
   }
   async function writeToDisk(filename, stats) {
     if (
-      process.env.NODE_ENV === "production" &&
+      process.env.NODE_ENV === 'production' &&
       !options.load &&
-      stats.files.some(file => file.diff!==0)
+      stats.files.some(file => file.diff !== 0)
     ) {
       const data = await readFromDisk(filename);
       data.unshift(stats);
-			await fs.ensureFile(filename);
-			await fs.writeJSON(filename, data);
-			await publishSizes(data,options.filename);
+      await fs.ensureFile(filename);
+      await fs.writeJSON(filename, data);
+      await publishSizes(data, options.filename);
     }
   }
   async function save(files) {
@@ -85,7 +96,7 @@ function bundleSize(_options) {
         diff: file.size - file.sizeBefore
       }))
     };
-    await publishDiff(stats,options.filename);
+    await publishDiff(stats, options.filename);
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
@@ -105,7 +116,7 @@ function bundleSize(_options) {
     const sizesBefore = await Promise.resolve(initialSizes);
     const assetNames = filterFiles(Object.keys(assets));
     const sizes = await Promise.all(
-      assetNames.map(name => gzipSize(assets[name].code))
+      assetNames.map(name => compressionSize(assets[name].code))
     );
 
     // map of de-hashed filenames to their final size
@@ -118,26 +129,26 @@ function bundleSize(_options) {
     ].filter(dedupe);
 
     const width = Math.max(...files.map(file => file.length));
-    let output = "";
+    let output = '';
     const items = [];
 
     for (const name of files) {
       const size = sizesAfter[name] || 0;
       const sizeBefore = sizesBefore[name] || 0;
       const delta = size - sizeBefore;
-      const msg = new Array(width - name.length + 2).join(" ") + name + " ⏤  ";
+      const msg = new Array(width - name.length + 2).join(' ') + name + ' ⏤  ';
       const color =
         size > 100 * 1024
-          ? "red"
+          ? 'red'
           : size > 40 * 1024
-          ? "yellow"
+          ? 'yellow'
           : size > 20 * 1024
-          ? "cyan"
-          : "green";
+          ? 'cyan'
+          : 'green';
       let sizeText = chalk[color](prettyBytes(size));
-      let deltaText = "";
+      let deltaText = '';
       if (delta && Math.abs(delta) > 1) {
-        deltaText = (delta > 0 ? "+" : "") + prettyBytes(delta);
+        deltaText = (delta > 0 ? '+' : '') + prettyBytes(delta);
         if (delta > 1024) {
           sizeText = chalk.bold(sizeText);
           deltaText = chalk.red(deltaText);
@@ -146,7 +157,7 @@ function bundleSize(_options) {
         }
         sizeText += ` (${deltaText})`;
       }
-      const text = msg + sizeText + "\n";
+      const text = msg + sizeText + '\n';
       const item = {
         name,
         sizeBefore,
@@ -163,7 +174,7 @@ function bundleSize(_options) {
     }
 
     await save(items);
-    output && console.log("\n" + output);
+    output && console.log('\n' + output);
   }
 
   async function getSizes(cwd) {
@@ -171,7 +182,7 @@ function bundleSize(_options) {
 
     const sizes = await Promise.all(
       filterFiles(files).map(file =>
-        gzipSize.file(path.join(cwd, file)).catch(() => null)
+        compressionSize.file(path.join(cwd, file)).catch(() => null)
       )
     );
 
@@ -179,7 +190,7 @@ function bundleSize(_options) {
   }
 
   return {
-    name: "rollup-plugin-size",
+    name: 'rollup-plugin-size',
     generateBundle
   };
 }
