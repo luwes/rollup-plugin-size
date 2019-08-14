@@ -72,7 +72,7 @@ function bundleSize(_options) {
       data.unshift(stats);
 			await fs.ensureFile(filename);
 			await fs.writeJSON(filename, data);
-			await publishSizes(data,this.options.filename);
+			await publishSizes(data,options.filename);
     }
   }
   async function save(files) {
@@ -85,7 +85,7 @@ function bundleSize(_options) {
         diff: file.size - file.sizeBefore
       }))
     };
-    await publishDiff(stats);
+    await publishDiff(stats,options.filename);
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
