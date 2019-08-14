@@ -43,9 +43,21 @@ const defaults = {
   brotli: false,
   pattern: '**/*.{mjs,js,jsx,css,html}',
   exclude: undefined,
+  writeFile:true,
+  publish:false,
   columnWidth: 20
 };
-
+/**
+ * Size Plugin for Rollup
+ * @param {Object} options
+ * @param {string} [options.gzip] use gzip compression for files
+ * @param {string} [options.brotli] use brotli compression for files
+ * @param {string} [options.pattern] minimatch pattern of files to track
+ * @param {string} [options.exclude] minimatch pattern of files NOT to track
+ * @param {string} [options.filename] file name to save filesizes to disk
+ * @param {boolean} [options.publish] option to publish filesizes to size-plugin-store
+ * @param {boolean} [options.writeFile] option to save filesizes to disk
+ */
 function bundleSize(_options) {
   const options = Object.assign(defaults, _options);
   const { pattern, exclude, brotli } = options;
@@ -76,14 +88,15 @@ function bundleSize(_options) {
   async function writeToDisk(filename, stats) {
     if (
       process.env.NODE_ENV === 'production' &&
-      !options.load &&
       stats.files.some(file => file.diff !== 0)
     ) {
       const data = await readFromDisk(filename);
       data.unshift(stats);
-      await fs.ensureFile(filename);
-      await fs.writeJSON(filename, data);
-      await publishSizes(data, options.filename);
+      if(options.writeFile){
+        await fs.ensureFile(filename);
+        await fs.writeJSON(filename, data);
+      }
+      options.publish && await publishSizes(data, options.filename);
     }
   }
   async function save(files) {
@@ -96,15 +109,12 @@ function bundleSize(_options) {
         diff: file.size - file.sizeBefore
       }))
     };
-    await publishDiff(stats, options.filename);
+    options.publish && await publishDiff(stats, options.filename);
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
   async function load(outputPath) {
-    if (options.load) {
-      const { files } = await options.load();
-      return toFileMap(files);
-    }
+
     const data = await readFromDisk(filename);
     if (data.length) {
       const [{ files }] = data;
