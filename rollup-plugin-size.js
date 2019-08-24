@@ -78,6 +78,9 @@ function bundleSize(_options) {
   }
   async function readFromDisk(filename) {
     try {
+      if(options.writeFile){
+        return [];
+      }
       await fs.ensureFile(filename);
       const oldStats = await fs.readJSON(filename);
       return oldStats.sort((a, b) => b.timestamp - a.timestamp);
