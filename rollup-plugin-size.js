@@ -68,10 +68,10 @@ function bundleSize(_options) {
   const compressionSize = brotli ? brotliSize : gzipSize;
 
   async function generateBundle(outputOptions, bundle) {
-    const dir = outputOptions.dir
+    const _path = outputOptions.dir
       ? path.resolve(outputOptions.dir)
-      : path.dirname(outputOptions.file);
-    initialSizes = await load(dir);
+      : path.resolve(outputOptions.file);
+    initialSizes = await load(_path);
     outputSizes(bundle).catch(console.error);
   }
   function filterFiles(files) {
