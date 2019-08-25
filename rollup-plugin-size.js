@@ -78,7 +78,7 @@ function bundleSize(_options) {
   }
   async function readFromDisk(filename) {
     try {
-      if(options.writeFile){
+      if(!options.writeFile){
         return [];
       }
       await fs.ensureFile(filename);
