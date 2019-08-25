@@ -43,8 +43,8 @@ const defaults = {
   brotli: false,
   pattern: '**/*.{mjs,js,jsx,css,html}',
   exclude: undefined,
-  writeFile:true,
-  publish:false,
+  writeFile: true,
+  publish: false,
   columnWidth: 20
 };
 /**
@@ -68,7 +68,10 @@ function bundleSize(_options) {
   const compressionSize = brotli ? brotliSize : gzipSize;
 
   async function generateBundle(outputOptions, bundle) {
-    initialSizes = await load(path.resolve(outputOptions.dir));
+    const dir = outputOptions.dir
+      ? path.resolve(outputOptions.dir)
+      : path.dirname(outputOptions.file);
+    initialSizes = await load(dir);
     outputSizes(bundle).catch(console.error);
   }
   function filterFiles(files) {
@@ -78,7 +81,7 @@ function bundleSize(_options) {
   }
   async function readFromDisk(filename) {
     try {
-      if(options.writeFile){
+      if (!options.writeFile) {
         return [];
       }
       await fs.ensureFile(filename);
@@ -95,11 +98,11 @@ function bundleSize(_options) {
     ) {
       const data = await readFromDisk(filename);
       data.unshift(stats);
-      if(options.writeFile){
+      if (options.writeFile) {
         await fs.ensureFile(filename);
         await fs.writeJSON(filename, data);
       }
-      options.publish && await publishSizes(data, options.filename);
+      options.publish && (await publishSizes(data, options.filename));
     }
   }
   async function save(files) {
@@ -112,12 +115,11 @@ function bundleSize(_options) {
         diff: file.size - file.sizeBefore
       }))
     };
-    options.publish && await publishDiff(stats, options.filename);
+    options.publish && (await publishDiff(stats, options.filename));
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
   async function load(outputPath) {
-
     const data = await readFromDisk(filename);
     if (data.length) {
       const [{ files }] = data;
