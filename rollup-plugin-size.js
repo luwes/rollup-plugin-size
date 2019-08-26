@@ -70,7 +70,7 @@ function bundleSize(_options) {
   async function generateBundle(outputOptions, bundle) {
     const _path = outputOptions.dir
       ? path.resolve(outputOptions.dir)
-      : path.resolve(outputOptions.file);
+      : path.dirname(outputOptions.file);
     initialSizes = await load(_path);
     outputSizes(bundle).catch(console.error);
   }
