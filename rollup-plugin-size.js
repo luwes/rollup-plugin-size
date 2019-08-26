@@ -74,11 +74,16 @@ function bundleSize(_options) {
     initialSizes = await load(_path);
     outputSizes(bundle).catch(console.error);
   }
-  function filterFiles(files) {
-    const isMatched = minimatch.filter(pattern);
-    const isExcluded = exclude ? minimatch.filter(exclude) : () => false;
-    return files.filter(file => isMatched(file) && !isExcluded(file));
+
+  async function load(outputPath) {
+    const data = await readFromDisk(filename);
+    if (data.length) {
+      const [{ files }] = data;
+      return toFileMap(files);
+    }
+    return getSizes(outputPath);
   }
+
   async function readFromDisk(filename) {
     try {
       if (!options.writeFile) {
@@ -91,6 +96,25 @@ function bundleSize(_options) {
       return [];
     }
   }
+
+  async function getSizes(cwd) {
+    const files = await glob(pattern, { cwd, ignore: exclude });
+
+    const sizes = await Promise.all(
+      filterFiles(files).map(file =>
+        compressionSize.file(path.join(cwd, file)).catch(() => null)
+      )
+    );
+
+    return toMap(files, sizes);
+  }
+
+  function filterFiles(files) {
+    const isMatched = minimatch.filter(pattern);
+    const isExcluded = exclude ? minimatch.filter(exclude) : () => false;
+    return files.filter(file => isMatched(file) && !isExcluded(file));
+  }
+
   async function writeToDisk(filename, stats) {
     if (
       process.env.NODE_ENV === 'production' &&
@@ -105,6 +129,7 @@ function bundleSize(_options) {
       options.publish && (await publishSizes(data, options.filename));
     }
   }
+
   async function save(files) {
     const stats = {
       timestamp: Date.now(),
@@ -119,14 +144,7 @@ function bundleSize(_options) {
     options.save && (await options.save(stats));
     await writeToDisk(filename, stats);
   }
-  async function load(outputPath) {
-    const data = await readFromDisk(filename);
-    if (data.length) {
-      const [{ files }] = data;
-      return toFileMap(files);
-    }
-    return getSizes(outputPath);
-  }
+
   async function outputSizes(assets) {
     const sizesBefore = await Promise.resolve(initialSizes);
     const assetNames = filterFiles(Object.keys(assets));
@@ -190,18 +208,6 @@ function bundleSize(_options) {
 
     await save(items);
     output && console.log('\n' + output);
-  }
-
-  async function getSizes(cwd) {
-    const files = await glob(pattern, { cwd, ignore: exclude });
-
-    const sizes = await Promise.all(
-      filterFiles(files).map(file =>
-        compressionSize.file(path.join(cwd, file)).catch(() => null)
-      )
-    );
-
-    return toMap(files, sizes);
   }
 
   return {
