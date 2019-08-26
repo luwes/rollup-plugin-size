@@ -68,7 +68,10 @@ function bundleSize(_options) {
   const compressionSize = brotli ? brotliSize : gzipSize;
 
   async function generateBundle(outputOptions, bundle) {
-    initialSizes = await load(path.resolve(outputOptions.dir));
+    const _path = outputOptions.dir
+      ? path.resolve(outputOptions.dir)
+      : path.dirname(outputOptions.file);
+    initialSizes = await load(_path);
     outputSizes(bundle).catch(console.error);
   }
 
@@ -83,7 +86,7 @@ function bundleSize(_options) {
 
   async function readFromDisk(filename) {
     try {
-      if(!options.writeFile){
+      if (!options.writeFile) {
         return [];
       }
       await fs.ensureFile(filename);
