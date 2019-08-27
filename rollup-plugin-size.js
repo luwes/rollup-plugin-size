@@ -24,7 +24,7 @@ const brotliSize = require('brotli-size');
 const prettyBytes = require('pretty-bytes');
 const fs = require('fs-extra');
 const { toMap, dedupe, toFileMap } = require('./utils.js');
-const { publishSizes, publishDiff } = require('./publish-size');
+const { publishSizes, publishDiff } = require('size-plugin-store');
 const glob = promisify(globPromise);
 
 brotliSize.file = (path, options) => {

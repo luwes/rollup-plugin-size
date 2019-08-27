@@ -169,10 +169,10 @@ chownr@^1.0.1:
   resolved "https://registry.yarnpkg.com/chownr/-/chownr-1.1.1.tgz#54726b8b8fff4df053c42187e801fb4412df1494"
   integrity sha512-j38EvO5+LHX84jlo6h4UzmOwi0UgW61WRyPtJz4qaadK5eY3BTS5TY/S1Stc3Uk2lIM6TPevAlULiEJwie860g==
 
-ci-env@^1.9.0:
-  version "1.9.0"
-  resolved "https://registry.yarnpkg.com/ci-env/-/ci-env-1.9.0.tgz#e86c4cf6be9d119f67f1d0d9aae497ccbece6e89"
-  integrity sha512-GKMUVeOunoGplUXmIr3ss2OpYvp7JUwTTZ2wiVV8JtUy6U8r7MaDWuV1vjJdf7yxqs9AbELHXQGW4b/L60COdA==
+ci-env@^1.10.0:
+  version "1.10.0"
+  resolved "https://registry.yarnpkg.com/ci-env/-/ci-env-1.10.0.tgz#82486b2b4ef8ca972595e34ec5640b9ac217693f"
+  integrity sha512-kXGriGO7hW/uxDviPtUUehSG301RudEHUXNhAHeM5JM7iOSb6+tpXh+YqhcfxdCECvtfMNq0J7laOxAV3NsDng==
 
 cli-cursor@^2.1.0:
   version "2.1.0"
@@ -1030,6 +1030,14 @@ simple-get@^2.7.0:
     decompress-response "^3.3.0"
     once "^1.3.1"
     simple-concat "^1.0.0"
+
+size-plugin-store@^0.0.1:
+  version "0.0.1"
+  resolved "https://registry.yarnpkg.com/size-plugin-store/-/size-plugin-store-0.0.1.tgz#ddf3735ae017d326509a41beb53244d40a27db6f"
+  integrity sha512-XCMxCiyzHdzKmoA9tb1U/81dr8QKt6gRkBEPCJd0KJmUkTOFTL94Sm9NSMtwiqco7SiaDA6eXpKP+amGw3mUHA==
+  dependencies:
+    axios "^0.19.0"
+    ci-env "^1.10.0"
 
 slice-ansi@^2.1.0:
   version "2.1.0"
