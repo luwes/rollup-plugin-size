@@ -1,5 +1,5 @@
 const path = require('path');
-const core = require('size-plugin-core');
+const SizePluginCore = require('size-plugin-core');
 
 const defaults = {
   gzip: true,
@@ -25,7 +25,7 @@ function bundleSize(_options) {
   const coreOptions = Object.assign(defaults, _options);
   coreOptions.compression=coreOptions.brotli?'brotli':'gzip';
 
-  const { outputSizes } = core(_options);
+  const core = new SizePluginCore(_options);
   async function generateBundle(outputOptions, bundle) {
 
     try {
@@ -38,7 +38,7 @@ function bundleSize(_options) {
       const outputPath = outputOptions.dir
         ? path.resolve(outputOptions.dir)
         : path.dirname(outputOptions.file);
-      const output = await outputSizes(assets, outputPath);
+      const output = await core.execute(assets, outputPath);
       output && console.log('\n' + output);
     } catch (error) {
       console.error(error);
