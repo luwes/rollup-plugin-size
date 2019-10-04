@@ -10,7 +10,7 @@
   "author": "Wesley Luyten <me@wesleyluyten.com> (https://wesleyluyten.com)",
   "license": "Apache-2.0",
   "dependencies": {
-    "size-plugin-core": "^0.0.4"
+    "size-plugin-core": "^0.0.5"
   },
   "devDependencies": {
     "eslint": "^5.14.0",
