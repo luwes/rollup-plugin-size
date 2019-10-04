@@ -21,13 +21,11 @@ const defaults = {
  * @param {boolean} [options.writeFile] option to save filesizes to disk
  */
 function bundleSize(_options) {
-
   const coreOptions = Object.assign(defaults, _options);
-  coreOptions.compression=coreOptions.brotli?'brotli':'gzip';
+  coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
 
   const core = new SizePluginCore(_options);
   async function generateBundle(outputOptions, bundle) {
-
     try {
       const assets = Object.keys(bundle).reduce((agg, key) => {
         agg[key] = {
@@ -38,8 +36,10 @@ function bundleSize(_options) {
       const outputPath = outputOptions.dir
         ? path.resolve(outputOptions.dir)
         : path.dirname(outputOptions.file);
+      outputOptions.file &&
+        (core.options.pattern = `${Object.keys(assets).pop()}`);
       const output = await core.execute(assets, outputPath);
-      output && console.log('\n' + output);
+      output && console.log(output);
     } catch (error) {
       console.error(error);
     }
