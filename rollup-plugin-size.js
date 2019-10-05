@@ -20,11 +20,11 @@ const defaults = {
  * @param {boolean} [options.publish] option to publish filesizes to size-plugin-store
  * @param {boolean} [options.writeFile] option to save filesizes to disk
  */
-function bundleSize(_options) {
-  const coreOptions = Object.assign(defaults, _options);
+function bundleSize(options) {
+  const coreOptions = Object.assign(defaults, options);
   coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
 
-  const core = new SizePluginCore(_options);
+  const core = new SizePluginCore(coreOptions);
   async function generateBundle(outputOptions, bundle) {
     try {
       const assets = Object.keys(bundle).reduce((agg, key) => {
