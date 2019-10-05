@@ -15,6 +15,8 @@
 
 > 🙋 Using Webpack? Check out the original [size-plugin](https://github.com/GoogleChromeLabs/size-plugin).
 
+> 🙋‍♂ Using CI ? Check out [size-plugin-bot](https://github.com/kuldeepkeshwar/size-plugin-bot) 🤖 to automate intergation with CI
+
 ## Installation
 
 Install `rollup-plugin-size` as a development dependency using npm:
