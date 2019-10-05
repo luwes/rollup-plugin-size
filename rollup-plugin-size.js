@@ -23,8 +23,8 @@ const defaults = {
 function bundleSize(options) {
   const coreOptions = Object.assign(defaults, options);
   coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
-
   const core = new SizePluginCore(coreOptions);
+
   async function generateBundle(outputOptions, bundle) {
     try {
       const assets = Object.keys(bundle).reduce((agg, key) => {
@@ -33,13 +33,23 @@ function bundleSize(options) {
         };
         return agg;
       }, {});
+
       const outputPath = outputOptions.dir
         ? path.resolve(outputOptions.dir)
         : path.dirname(outputOptions.file);
-      outputOptions.file &&
-        (core.options.pattern = `${Object.keys(assets).pop()}`);
-      const output = await core.execute(assets, outputPath);
-      output && console.log(output);
+
+      if (outputOptions.file) {
+        core.options.pattern = Object.keys(assets).pop();
+      }
+
+      let output = await core.execute(assets, outputPath);
+      if (output) {
+        if (outputOptions.file) {
+          // Remove newline for single file output.
+          output = output.trimRight();
+        }
+        console.log(output);
+      }
     } catch (error) {
       console.error(error);
     }
