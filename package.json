@@ -4,7 +4,7 @@
   "description": "Track compressed Rollup asset sizes over time.",
   "main": "rollup-plugin-size.js",
   "scripts": {
-    "test": "eslint"
+    "test": "eslint *.js"
   },
   "repository": "luwes/rollup-plugin-size",
   "author": "Wesley Luyten <me@wesleyluyten.com> (https://wesleyluyten.com)",
@@ -13,7 +13,7 @@
     "size-plugin-core": "^0.0.6"
   },
   "devDependencies": {
-    "eslint": "^5.14.0",
+    "eslint": "^6.5.1",
     "prettier": "^1.16.4"
   },
   "engines": {
