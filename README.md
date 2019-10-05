@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://i.imgur.com/SE1mlK2.png" width="602" alt="rollup-plugin-size">
+  <img src="https://i.imgur.com/9c0KN6W.png" width="100%" alt="rollup-plugin-size">
 </p>
 
 > 🙋 Using Webpack? Check out the original [size-plugin](https://github.com/GoogleChromeLabs/size-plugin).
