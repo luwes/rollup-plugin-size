@@ -21,7 +21,7 @@ const defaults = {
  * @param {boolean} [options.writeFile] option to save filesizes to disk
  */
 function bundleSize(options) {
-  const coreOptions = Object.assign(defaults, options);
+  const coreOptions = Object.assign({},defaults,options);
   coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
   const core = new SizePluginCore(coreOptions);
 
