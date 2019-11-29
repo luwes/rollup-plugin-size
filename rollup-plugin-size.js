@@ -21,16 +21,35 @@ const defaults = {
  * @param {boolean} [options.writeFile] option to save filesizes to disk
  */
 function bundleSize(options) {
-  const coreOptions = Object.assign({},defaults,options);
+  const coreOptions = Object.assign({}, defaults, options);
   coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
   const core = new SizePluginCore(coreOptions);
 
   async function generateBundle(outputOptions, bundle) {
     try {
       const assets = Object.keys(bundle).reduce((agg, key) => {
-        agg[key] = {
-          source: bundle[key].code
-        };
+        const outputFile = bundle[key];
+
+        // Copied from Rollup - https://github.com/rollup/rollup/blob/c547361dca21fcd6565e4d289e4155a86e3594cf/src/rollup/index.ts#L426-L426
+        let source;
+        if (outputFile.type === 'asset') {
+          source = outputFile.source;
+        } else {
+          source = outputFile.code;
+          if (outputOptions.sourcemap && outputFile.map) {
+            let url;
+            if (outputOptions.sourcemap === 'inline') {
+              url = outputFile.map.toUrl();
+            } else {
+              url = `${path.basename(outputFile.fileName)}.map`;
+            }
+            if (outputOptions.sourcemap !== 'hidden') {
+              source += `//# sourceMappingURL=${url}\n`;
+            }
+          }
+        }
+
+        agg[key] = { source };
         return agg;
       }, {});
 
@@ -38,13 +57,14 @@ function bundleSize(options) {
         ? path.resolve(outputOptions.dir)
         : path.dirname(outputOptions.file);
 
-      if (outputOptions.file) {
+      const isSingleChunk = Object.keys(bundle).length === 1;
+      if (isSingleChunk) {
         core.options.pattern = Object.keys(assets).pop();
       }
 
       let output = await core.execute(assets, outputPath);
       if (output) {
-        if (outputOptions.file) {
+        if (isSingleChunk) {
           // Remove newline for single file output.
           output = output.trimRight();
         }

@@ -10,11 +10,11 @@
   "author": "Wesley Luyten <me@wesleyluyten.com> (https://wesleyluyten.com)",
   "license": "Apache-2.0",
   "dependencies": {
-    "size-plugin-core": "^0.0.6"
+    "size-plugin-core": "^0.0.7"
   },
   "devDependencies": {
-    "eslint": "^6.5.1",
-    "prettier": "^1.16.4"
+    "eslint": "^6.7.1",
+    "prettier": "^1.19.1"
   },
   "engines": {
     "node": ">=10.0.0"
