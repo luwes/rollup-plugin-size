@@ -25,6 +25,13 @@ function bundleSize(options) {
   coreOptions.compression = coreOptions.brotli ? 'brotli' : 'gzip';
   const core = new SizePluginCore(coreOptions);
 
+  // Fixes a bug in size-plugin-core 0.0.7.
+  if (coreOptions.brotli && typeof core.compressionSize !== 'function') {
+    const compressionSize = core.compressionSize;
+    core.compressionSize = compressionSize.sync;
+    core.compressionSize.file = compressionSize.file;
+  }
+
   async function generateBundle(outputOptions, bundle) {
     try {
       const assets = Object.keys(bundle).reduce((agg, key) => {
