@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-size",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Track compressed Rollup asset sizes over time.",
   "type": "module",
   "main": "rollup-plugin-size.js",
