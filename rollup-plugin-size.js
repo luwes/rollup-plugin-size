@@ -14,33 +14,29 @@
  * the License.
  */
 
-const path = require('path');
-const chalk = require('chalk');
-const { promisify } = require('util');
-const globPromise = require('glob');
-const minimatch = require('minimatch');
-const gzipSize = require('gzip-size');
-const brotliSize = require('brotli-size');
-const prettyBytes = require('pretty-bytes');
-const fs = require('fs-extra');
-const { toMap, dedupe, toFileMap } = require('./utils.js');
-const { publishSizes, publishDiff } = require('./publish-size');
+import path from 'path';
+import chalk from 'chalk';
+import { promisify } from 'util';
+import globPromise from 'glob';
+import minimatch from 'minimatch';
+import zlib from 'zlib';
+import prettyBytes from 'pretty-bytes';
+import fs from 'fs-extra';
+import { toMap, dedupe, toFileMap } from './utils.js';
+import { publishSizes, publishDiff } from './publish-size.js';
 const glob = promisify(globPromise);
 
-brotliSize.file = (path, options) => {
-  return new Promise((resolve, reject) => {
-    const stream = fs.createReadStream(path);
-    stream.on('error', reject);
-
-    const brotliStream = stream.pipe(brotliSize.stream(options));
-    brotliStream.on('error', reject);
-    brotliStream.on('brotli-size', resolve);
-  });
+const GZIP_OPTS = {
+  level: 9
+};
+const BROTLI_OPTS = {
+  params: {
+    [zlib.constants.BROTLI_PARAM_QUALITY]: zlib.constants.BROTLI_MAX_QUALITY
+  }
 };
 
 const defaults = {
-  gzip: true,
-  brotli: false,
+  compression: 'gzip',
   pattern: '**/*.{mjs,js,jsx,css,html}',
   exclude: undefined,
   writeFile: true,
@@ -50,8 +46,7 @@ const defaults = {
 /**
  * Size Plugin for Rollup
  * @param {Object} options
- * @param {string} [options.gzip] use gzip compression for files
- * @param {string} [options.brotli] use brotli compression for files
+ * @param {'none' | 'gzip' | 'brotli'} [options.compression = 'gzip'] change the compression algorithm used for calculated sizes
  * @param {string} [options.pattern] minimatch pattern of files to track
  * @param {string} [options.exclude] minimatch pattern of files NOT to track
  * @param {string} [options.filename] file name to save filesizes to disk
@@ -60,17 +55,24 @@ const defaults = {
  */
 function bundleSize(_options) {
   const options = Object.assign(defaults, _options);
-  const { pattern, exclude, brotli } = options;
+  let { pattern, exclude, compression } = options;
   options.filename = options.filename || 'size-plugin.json';
   const filename = path.join(process.cwd(), options.filename);
   let initialSizes;
-
-  const compressionSize = brotli ? brotliSize : gzipSize;
+  let isSingleChunk;
 
   async function generateBundle(outputOptions, bundle) {
     const _path = outputOptions.dir
       ? path.resolve(outputOptions.dir)
       : path.dirname(outputOptions.file);
+
+    let chunks = Object.values(bundle)
+      .filter((outputFile) => outputFile.type === 'chunk');
+    isSingleChunk = chunks.length === 1;
+    if (isSingleChunk) {
+      pattern = chunks[0].fileName;
+    }
+
     initialSizes = await load(_path);
     outputSizes(bundle).catch(console.error);
   }
@@ -89,7 +91,6 @@ function bundleSize(_options) {
       if (!options.writeFile) {
         return [];
       }
-      await fs.ensureFile(filename);
       const oldStats = await fs.readJSON(filename);
       return oldStats.sort((a, b) => b.timestamp - a.timestamp);
     } catch (err) {
@@ -101,12 +102,28 @@ function bundleSize(_options) {
     const files = await glob(pattern, { cwd, ignore: exclude });
 
     const sizes = await Promise.all(
-      filterFiles(files).map(file =>
-        compressionSize.file(path.join(cwd, file)).catch(() => null)
-      )
+      filterFiles(files).map(async file => {
+        const source = await fs.promises.readFile(path.join(cwd, file)).catch(() => null);
+        if (source == null) return null;
+        return getCompressedSize(source);
+      })
     );
 
     return toMap(files, sizes);
+  }
+
+  async function getCompressedSize(source) {
+    let compressed = source;
+    if (compression === 'gzip') {
+      const gz = promisify(zlib.gzip);
+      compressed = await gz(source, GZIP_OPTS);
+    }
+    else if (compression === 'brotli') {
+      if (!zlib.brotliCompress) throw Error('Brotli not supported in this Node version.');
+      const br = promisify(zlib.brotliCompress);
+      compressed = await br(source, BROTLI_OPTS);
+    }
+    return Buffer.byteLength(compressed);
   }
 
   function filterFiles(files) {
@@ -149,7 +166,7 @@ function bundleSize(_options) {
     const sizesBefore = await Promise.resolve(initialSizes);
     const assetNames = filterFiles(Object.keys(assets));
     const sizes = await Promise.all(
-      assetNames.map(name => compressionSize(assets[name].code))
+      assetNames.map(name => getCompressedSize(assets[name].code))
     );
 
     // map of de-hashed filenames to their final size
@@ -161,7 +178,7 @@ function bundleSize(_options) {
       ...Object.keys(sizesAfter)
     ].filter(dedupe);
 
-    const width = Math.max(...files.map(file => file.length));
+    const width = Math.max(...files.map(file => file.length), defaults.columnWidth || 0);
     let output = '';
     const items = [];
 
@@ -207,7 +224,14 @@ function bundleSize(_options) {
     }
 
     await save(items);
-    output && console.log('\n' + output);
+
+    if (output) {
+      if (isSingleChunk) {
+        // Remove newline for single file output.
+        output = output.trimRight();
+      }
+      console.log(output);
+    }
   }
 
   return {
@@ -216,4 +240,4 @@ function bundleSize(_options) {
   };
 }
 
-module.exports = bundleSize;
+export default bundleSize;
